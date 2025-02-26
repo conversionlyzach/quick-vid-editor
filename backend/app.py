@@ -1,0 +1,116 @@
+import os
+import subprocess
+from dotenv import load_dotenv
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from werkzeug.utils import secure_filename
+import openai  # Ensure you're using openai==0.28.0 for legacy transcription support
+
+app = Flask(__name__)
+CORS(app)
+
+load_dotenv('backend.env')
+
+# Increase max content length (example: 25GB)
+app.config['MAX_CONTENT_LENGTH'] = 25 * 1024 * 1024 * 1024
+
+UPLOAD_FOLDER = "uploads"
+AUDIO_FOLDER = "audio"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(AUDIO_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+# Set your OpenAI API key (make sure your backend.env contains OPENAI_API_KEY)
+openai.api_key = os.getenv('OPENAI_API_KEY')
+
+def format_time(seconds):
+    hrs = int(seconds // 3600)
+    mins = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    return f"{hrs:02d}:{mins:02d}:{secs:02d}"
+
+@app.route("/api/transcribe", methods=["POST"])
+def transcribe():
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    file.save(filepath)
+    print(f"Saved file to: {filepath}, size: {os.path.getsize(filepath)} bytes")
+
+    # Extract audio using native FFmpeg
+    audio_filename = os.path.splitext(filename)[0] + ".wav"
+    audio_filepath = os.path.join(AUDIO_FOLDER, audio_filename)
+    try:
+        cmd = [
+            "ffmpeg",
+            "-y",  # Overwrite output if exists
+            "-i", filepath,
+            "-vn",
+            "-ar", "44100",
+            "-ac", "2",
+            "-b:a", "192k",
+            audio_filepath
+        ]
+        print("Running FFmpeg command:", cmd)
+        subprocess.run(cmd, check=True)
+        print("FFmpeg completed. Audio saved to:", audio_filepath)
+    except subprocess.CalledProcessError as e:
+        print("FFmpeg error:", e)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({"error": f"FFmpeg failed: {e}"}), 500
+
+    # Call OpenAI Whisper API with verbose_json response format for segmentation.
+    # This uses the legacy transcription method which works with openai==0.28.0.
+    try:
+        with open(audio_filepath, "rb") as audio_file:
+            transcript_response = openai.Audio.transcribe(
+                model="whisper-1",
+                file=audio_file,
+                response_format="verbose_json",
+                language="en",
+                task="transcribe"
+            )
+        print("Transcript response:", transcript_response)
+        transcript = []
+        if "segments" in transcript_response and transcript_response["segments"]:
+            for seg in transcript_response["segments"]:
+                transcript.append({
+                    "effectiveStart": seg.get("start", 0),
+                    "effectiveEnd": seg.get("end", 0),
+                    "startFormatted": format_time(seg.get("start", 0)),
+                    "endFormatted": format_time(seg.get("end", 0)),
+                    "text": seg.get("text", "").strip()
+                })
+        else:
+            transcript_text = transcript_response.get("text", "")
+            transcript = [{
+                "effectiveStart": 0,
+                "effectiveEnd": transcript_response.get("duration", 0),
+                "startFormatted": "00:00:00",
+                "endFormatted": format_time(transcript_response.get("duration", 0)),
+                "text": transcript_text
+            }]
+        print("Transcription successful.")
+    except Exception as e:
+        print("Error during transcription:", e)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        if os.path.exists(audio_filepath):
+            os.remove(audio_filepath)
+        return jsonify({"error": str(e)}), 500
+
+    # Clean up files
+    if os.path.exists(filepath):
+        os.remove(filepath)
+    if os.path.exists(audio_filepath):
+        os.remove(audio_filepath)
+    return jsonify({"transcript": transcript})
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5001)

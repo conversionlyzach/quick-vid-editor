@@ -1,0 +1,28 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00cae0"/>
+      <stop offset="100%" stop-color="#00a1b8"/>
+    </linearGradient>
+  </defs>
+  <!-- Center the design -->
+  <g transform="translate(128,128)">
+    <!-- Outer gear (automation element) -->
+    <circle r="50" fill="url(#mainGradient)" />
+    <!-- Gear teeth -->
+    <g fill="url(#mainGradient)">
+      <rect x="-4" y="-70" width="8" height="14" transform="rotate(0)" />
+      <rect x="-4" y="-70" width="8" height="14" transform="rotate(45)" />
+      <rect x="-4" y="-70" width="8" height="14" transform="rotate(90)" />
+      <rect x="-4" y="-70" width="8" height="14" transform="rotate(135)" />
+      <rect x="-4" y="-70" width="8" height="14" transform="rotate(180)" />
+      <rect x="-4" y="-70" width="8" height="14" transform="rotate(225)" />
+      <rect x="-4" y="-70" width="8" height="14" transform="rotate(270)" />
+      <rect x="-4" y="-70" width="8" height="14" transform="rotate(315)" />
+    </g>
+    <!-- Inner circle (background for video element) -->
+    <circle r="30" fill="#FFFFFF" />
+    <!-- Play button (video editing element) -->
+    <polygon points="-10,-15 20,0 -10,15" fill="url(#mainGradient)" />
+  </g>
+</svg>

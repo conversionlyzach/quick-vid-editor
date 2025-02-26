@@ -1,0 +1,74 @@
+/* src/theme.css */
+:root {
+    --navmenu-bg: #000000;
+    --navmenu-text: #c2cfd6cc;
+    --navmenu-active: #0E0E11;
+  
+    --media-bg: #0E0E11;
+  
+    --video-preview-bg: #EFF3F5;
+  
+    --timeline-bg: #FFFFFF;
+    --timeline-track: #DFE5E8;
+    --timeline-header-icon: #090C14;
+    --timeline-header-current: #090C14;
+    --timeline-header-total: #97A0A8;
+  
+    --timeline-segment-handle-bg: rgba(0, 0, 0, 0.3);    
+
+    --playhead-color: #090C14;
+  
+    --export-default: #00cae0;
+    --export-hover: #00b1cc;
+    --export-pressed: #0099b8;
+  
+    --upload-bg: #2C2D33;
+    --upload-font-default: #00cae0;
+    --upload-font-hover: #00b1cc;
+    --upload-font-pressed: #0099b8;
+  
+    --transcript-timestamp: #00cae0;
+
+    /* …other variables as needed */
+
+    --media-bg: #0E0E11;
+    --transcript-border: #ffffff0f;
+    --upload-bg: #2C2D33;
+    --upload-font-default: #00cae0;
+    --upload-font-hover: #00b1cc;
+    --upload-font-pressed: #0099b8;
+    --navmenu-text: #c2cfd6cc;
+
+    /* Timeline Ruler Colors */
+  --timeline-ruler-bg: #FFFFFF;              /* background for the ruler */
+  --timeline-ruler-font: #A8B1BC;          /* font color for the ruler */
+  --timeline-ruler-marker: #E6EAEC;        /* marker border color */
+
+  /* Timeline Track & Segment Theme */
+  --timeline-track-bg: #DFE5E8;         /* background for the entire timeline track */
+  --timeline-segment-bg: #2C2D33;         /* background for individual segments */
+  --timeline-segment-text: #ffffff;
+  --timeline-segment-selected: #00cae0;       /* text color for segments */
+
+  /* Playhead color */
+  --playhead-color: #090C14;
+
+  --video-preview-bg: #EFF3F5;         /* Video preview background */
+  --upload-border-color: #B7B5B3;        /* Border color for drop zones */
+  --upload-icon-color: #027BCE;          /* Color for the upload icon */
+  --upload-text-color: #333333;          /* Text color in the drop zone */
+
+    /* Media / Transcript colors */
+    --upload-icon-color: #00cae0;
+    --upload-text-color: #00cae0;
+
+      /* Transcript Theme Variables */
+      --transcript-bg: #242529;
+      --transcript-border: 1px solid #ffffff0f;
+      --transcript-active-border: 1px solid #00cae0;
+      --transcript-default-timestamp: #CFD5DA;
+      --transcript-active-timestamp: #00cae0;
+      --transcript-text: #FFFFFF;
+
+  }
+  
