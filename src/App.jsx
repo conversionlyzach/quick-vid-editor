@@ -5,21 +5,13 @@ import MediaFolder from './components/MediaFolder';
 import VideoPreview from './components/VideoPreview';
 import Timeline from './components/Timeline';
 import TranscriptionFeature from './components/TranscriptionFeature';
-import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
 import { adjustTranscriptTimestamps } from './utils/adjustTranscript';
-
-const ffmpeg = createFFmpeg({
-  log: true,
-  corePath: '/ffmpeg-core.js'
-});
 
 const formatTime = (seconds) => {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
-  return `${hrs.toString().padStart(2, '0')}:${mins
-    .toString()
-    .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
 const App = () => {
@@ -71,41 +63,6 @@ const App = () => {
     }
   ];
 
-  const transcribeVideo = async () => {
-    if (!videoFile) return;
-    setTranscriptionLoading(true);
-    try {
-      if (!ffmpeg.isLoaded()) {
-        await ffmpeg.load();
-      }
-      const fileData = await fetchFile(videoFile);
-      ffmpeg.FS('writeFile', 'input.mp4', fileData);
-      await ffmpeg.run('-i', 'input.mp4', '-vn', '-ar', '44100', '-ac', '2', '-b:a', '192k', 'output.wav');
-      const data = ffmpeg.FS('readFile', 'output.wav');
-      const blob = new Blob([data.buffer], { type: 'audio/wav' });
-      ffmpeg.FS('unlink', 'input.mp4');
-      ffmpeg.FS('unlink', 'output.wav');
-
-      const formData = new FormData();
-      formData.append('file', blob, 'output.wav');
-      formData.append('effectiveMapping', JSON.stringify(editedMapping));
-
-      const response = await fetch('http://localhost:5001/api/transcribe', {
-        method: 'POST',
-        body: formData
-      });
-      if (!response.ok) {
-        throw new Error('Transcription API request failed');
-      }
-      const dataJson = await response.json();
-      setTranscript(dataJson.transcript);
-    } catch (error) {
-      console.error("Error during transcription:", error);
-    } finally {
-      setTranscriptionLoading(false);
-    }
-  };
-
   const handleDeleteSegment = (deletionStart, deletionEnd) => {
     console.log("handleDeleteSegment called with:", deletionStart, deletionEnd);
     setTranscript(prevTranscript => {
@@ -151,11 +108,17 @@ const App = () => {
             videoFile={videoFile}
             editedMapping={editedMapping}
             transcript={transcript}
-            onTranscribe={transcribeVideo}
+            // Set loading state when transcription starts
+            onTranscribe={() => setTranscriptionLoading(true)}
+            // Update parent's transcript state when transcription completes
+            onTranscriptUpdate={(newTranscript) => {
+              setTranscript(newTranscript);
+              setTranscriptionLoading(false);
+            }}
             loading={transcriptionLoading}
             onSegmentClick={(effectiveStart) => setPlaybackTime(effectiveStart)}
-            currentPlaybackTime={playbackTime}  // NEW: Pass current playback time
-            isPlaying={isPlaying}                // NEW: Pass playing status
+            currentPlaybackTime={playbackTime}  
+            isPlaying={isPlaying}                
           />
         )}
       </div>

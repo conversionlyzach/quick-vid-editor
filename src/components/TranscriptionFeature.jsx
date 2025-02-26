@@ -1,17 +1,7 @@
 // src/components/TranscriptionFeature.jsx
 import React, { useState, useEffect } from 'react';
-import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
 import TranscriptViewer from './TranscriptViewer';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-
-// Initialize ffmpeg with your core file from public.
-const ffmpeg = createFFmpeg({
-  log: true,
-  corePath: '/ffmpeg-core.js',
-});
-
-// Optionally, you can set a progress callback here if desired.
-// (Our extractAudio function simulates progress instead.)
 
 const TranscriptionFeature = ({
   videoUrl,
@@ -19,65 +9,25 @@ const TranscriptionFeature = ({
   editedMapping,
   transcript,
   onTranscribe,
+  onTranscriptUpdate, // new callback to update parent's transcript state
   loading,
   onSegmentClick,
-  currentPlaybackTime, // NEW: receive the current playback time
-  isPlaying           // NEW: if needed for additional logic
+  currentPlaybackTime,
+  isPlaying
 }) => {
   const [localTranscript, setLocalTranscript] = useState(transcript || []);
-  const [progress, setProgress] = useState(0);
 
-  // Update local transcript when transcript prop changes.
   useEffect(() => {
     setLocalTranscript(transcript);
   }, [transcript]);
 
-  // Extract audio using ffmpeg.wasm with simulated progress.
-  const extractAudio = async () => {
-    if (!ffmpeg.isLoaded()) {
-      await ffmpeg.load();
-    }
-    setProgress(0);
-    const fileData = await fetchFile(videoFile);
-    ffmpeg.FS('writeFile', 'input.mp4', fileData);
-
-    // Simulate slower progress: update progress by 1% every 300ms until 95%.
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => (prev < 95 ? prev + 1 : prev));
-    }, 300);
-
-    await ffmpeg.run(
-      '-i',
-      'input.mp4',
-      '-vn',
-      '-ar',
-      '44100',
-      '-ac',
-      '2',
-      '-b:a',
-      '192k',
-      'output.wav'
-    );
-
-    clearInterval(progressInterval);
-    // Extraction is complete; set progress to 100%.
-    setProgress(100);
-
-    const data = ffmpeg.FS('readFile', 'output.wav');
-    const blob = new Blob([data.buffer], { type: 'audio/wav' });
-    ffmpeg.FS('unlink', 'input.mp4');
-    ffmpeg.FS('unlink', 'output.wav');
-    return blob;
-  };
-
   const transcribeVideo = async () => {
     if (!videoFile) return;
-    // Notify parent that transcription is starting, if needed.
-    onTranscribe && onTranscribe();
+    onTranscribe && onTranscribe(); // signal transcription start
     try {
-      let audioToSend = await extractAudio();
       const formData = new FormData();
-      formData.append('file', audioToSend, 'output.wav');
+      // Upload the original video file directly
+      formData.append('file', videoFile);
       formData.append('effectiveMapping', JSON.stringify(editedMapping));
 
       const response = await fetch('http://localhost:5001/api/transcribe', {
@@ -90,6 +40,8 @@ const TranscriptionFeature = ({
       }
       const data = await response.json();
       setLocalTranscript(data.transcript);
+      // Update parent's transcript state so deletions work correctly
+      onTranscriptUpdate && onTranscriptUpdate(data.transcript);
     } catch (error) {
       console.error('Error during transcription:', error);
     }
@@ -121,20 +73,16 @@ const TranscriptionFeature = ({
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              <p className="mb-2">Transcribing... {progress}%</p>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
-              </div>
+              <p className="mb-2">Transcribing...</p>
             </div>
           )}
         </>
       ) : (
-        // When a transcript exists, show it in a scrollable container.
         <div className="h-full overflow-y-auto w-full">
           <TranscriptViewer 
             transcriptSegments={localTranscript}
             onSegmentClick={onSegmentClick}
-            currentPlaybackTime={currentPlaybackTime} // NEW: Pass current playback time for active highlighting
+            currentPlaybackTime={currentPlaybackTime}
           />
         </div>
       )}

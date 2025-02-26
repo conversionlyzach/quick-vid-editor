@@ -10,9 +10,7 @@ app = Flask(__name__)
 CORS(app)
 
 load_dotenv('backend.env')
-
-# Increase max content length (example: 25GB)
-app.config['MAX_CONTENT_LENGTH'] = 25 * 1024 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 25 * 1024 * 1024 * 1024  # 25GB
 
 UPLOAD_FOLDER = "uploads"
 AUDIO_FOLDER = "audio"
@@ -20,7 +18,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# Set your OpenAI API key (make sure your backend.env contains OPENAI_API_KEY)
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
 def format_time(seconds):
@@ -42,18 +39,19 @@ def transcribe():
     file.save(filepath)
     print(f"Saved file to: {filepath}, size: {os.path.getsize(filepath)} bytes")
 
-    # Extract audio using native FFmpeg
-    audio_filename = os.path.splitext(filename)[0] + ".wav"
+    # Always convert to mp3 to compress file size
+    name, _ = os.path.splitext(filename)
+    audio_filename = name + ".mp3"
     audio_filepath = os.path.join(AUDIO_FOLDER, audio_filename)
     try:
         cmd = [
             "ffmpeg",
-            "-y",  # Overwrite output if exists
+            "-y",  # Overwrite if exists
             "-i", filepath,
             "-vn",
             "-ar", "44100",
             "-ac", "2",
-            "-b:a", "192k",
+            "-b:a", "128k",  # Use 128 kbps for better compression
             audio_filepath
         ]
         print("Running FFmpeg command:", cmd)
@@ -65,8 +63,6 @@ def transcribe():
             os.remove(filepath)
         return jsonify({"error": f"FFmpeg failed: {e}"}), 500
 
-    # Call OpenAI Whisper API with verbose_json response format for segmentation.
-    # This uses the legacy transcription method which works with openai==0.28.0.
     try:
         with open(audio_filepath, "rb") as audio_file:
             transcript_response = openai.Audio.transcribe(
