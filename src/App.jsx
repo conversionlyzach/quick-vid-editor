@@ -147,21 +147,22 @@ const App = () => {
         >
           {videoUrl ? (
             <Timeline 
-              videoDuration={videoDuration}
-              segments={segments}
-              playbackTime={playbackTime}
-              onSeek={setPlaybackTime}
-              onPlayPause={handlePlayPause}
-              isPlaying={isPlaying}
-              playbackSpeed={playbackSpeed}
-              onSpeedChange={handleSpeedChange}
-              isDraggingPlayhead={isDraggingPlayhead}
-              setIsDraggingPlayhead={setIsDraggingPlayhead}
-              wasPlaying={wasPlaying}
-              setWasPlaying={setWasPlaying}
-              onEditUpdate={setEditedMapping}
-              onDeleteSegment={handleDeleteSegment}
-            />
+            videoFile={videoFile} // Pass the uploaded video file here
+            videoDuration={videoDuration}
+            segments={segments}
+            playbackTime={playbackTime}
+            onSeek={setPlaybackTime}
+            onPlayPause={handlePlayPause}
+            isPlaying={isPlaying}
+            playbackSpeed={playbackSpeed}
+            onSpeedChange={handleSpeedChange}
+            isDraggingPlayhead={isDraggingPlayhead}
+            setIsDraggingPlayhead={setIsDraggingPlayhead}
+            wasPlaying={wasPlaying}
+            setWasPlaying={setWasPlaying}
+            onEditUpdate={setEditedMapping}
+            onDeleteSegment={handleDeleteSegment}
+          />          
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{ color: "var(--navmenu-text)" }}>
               Drop your file here

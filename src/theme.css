@@ -70,5 +70,8 @@
       --transcript-active-timestamp: #00cae0;
       --transcript-text: #FFFFFF;
 
+
+      /* Segment Updates */
+      --timeline-segment-deadspace: #FB3B34;
   }
   

@@ -28,7 +28,7 @@ const TimelineTrack = ({
               top: '10px', // Leaves 10px padding at the top
               width: width,
               height: 'calc(100% - 20px)', // Leaves 10px padding at top and bottom
-              backgroundColor: "var(--timeline-segment-bg)",
+              backgroundColor: segment.isDeadSpace ? "#FB3B34" : "var(--timeline-segment-bg)",
               borderRadius: '3px',
               border: isSelected ? '3px solid var(--timeline-segment-selected)' : 'none',
               boxSizing: 'border-box',

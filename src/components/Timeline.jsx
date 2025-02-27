@@ -35,6 +35,56 @@ const createInitialSegment = (duration) => ({
   label: `00:00:00 - ${formatTime(duration)}`
 });
 
+// Helper function to split the full timeline into segments based on dead space boundaries.
+const splitSegments = (deadSpaces, videoDuration, formatTime) => {
+  const segments = [];
+  let currentStart = 0;
+  let segCount = 1;
+  // Ensure deadSpaces are sorted by start time.
+  deadSpaces.sort((a, b) => a.start - b.start);
+  for (const ds of deadSpaces) {
+    // Create a normal segment before the dead space (if any)
+    if (ds.start > currentStart) {
+      segments.push({
+        id: `seg${segCount}`,
+        originalStart: currentStart,
+        originalEnd: ds.start,
+        effectiveStart: currentStart,
+        effectiveEnd: ds.start,
+        label: `${formatTime(currentStart)} - ${formatTime(ds.start)}`,
+        isDeadSpace: false
+      });
+      segCount++;
+    }
+    // Create a dead space segment
+    segments.push({
+      id: `seg${segCount}`,
+      originalStart: ds.start,
+      originalEnd: ds.end,
+      effectiveStart: ds.start,
+      effectiveEnd: ds.end,
+      label: `${formatTime(ds.start)} - ${formatTime(ds.end)}`,
+      isDeadSpace: true
+    });
+    segCount++;
+    currentStart = ds.end;
+  }
+  // If there is any remainder after the last dead space, add a final normal segment.
+  if (currentStart < videoDuration) {
+    segments.push({
+      id: `seg${segCount}`,
+      originalStart: currentStart,
+      originalEnd: videoDuration,
+      effectiveStart: currentStart,
+      effectiveEnd: videoDuration,
+      label: `${formatTime(currentStart)} - ${formatTime(videoDuration)}`,
+      isDeadSpace: false
+    });
+  }
+  return segments;
+};
+
+
 const recalcEffectiveSegments = (segs) => {
   let cumulative = 0;
   return segs.map(seg => {
@@ -55,6 +105,7 @@ const recalcEffectiveSegments = (segs) => {
 };
 
 const Timeline = ({
+  videoFile, // NEW: Accept videoFile prop from parent
   videoDuration = 600,
   segments: initialSegmentsProp = [],
   playbackTime = 0,
@@ -109,13 +160,15 @@ const Timeline = ({
     const seg = segments[segIndex];
     const offset = splitTime - seg.effectiveStart;
     const originalSplit = seg.originalStart + offset;
+    // Create two new segments, preserving the isDeadSpace property
     const newSeg1 = {
       id: seg.id + "-1",
       originalStart: seg.originalStart,
       originalEnd: originalSplit,
       effectiveStart: 0,
       effectiveEnd: 0,
-      label: ""
+      label: "",
+      isDeadSpace: seg.isDeadSpace  // Preserve dead space flag
     };
     const newSeg2 = {
       id: seg.id + "-2",
@@ -123,7 +176,8 @@ const Timeline = ({
       originalEnd: seg.originalEnd,
       effectiveStart: 0,
       effectiveEnd: 0,
-      label: ""
+      label: "",
+      isDeadSpace: seg.isDeadSpace  // Preserve dead space flag
     };
     const newSegments = [
       ...segments.slice(0, segIndex),
@@ -135,6 +189,7 @@ const Timeline = ({
     setSegments(recalculated);
     setSelectedSegmentId(null);
   };
+  
 
   // Deletion functionality.
   const handleLocalDeleteSegment = () => {
@@ -209,6 +264,39 @@ const Timeline = ({
 
   const handlePan = () => alert("Pan timeline");
 
+  // --- NEW: Dead Space Detection ---
+  const [deadSpaceProcessing, setDeadSpaceProcessing] = useState(false);
+
+  const detectDeadSpace = async () => {
+    if (!videoFile) {
+      alert("No video file available for dead space detection.");
+      return;
+    }
+    setDeadSpaceProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", videoFile);
+      const response = await fetch("http://localhost:5001/api/detect-dead-space", {
+        method: "POST",
+        body: formData
+      });
+      if (!response.ok) {
+        throw new Error("Dead space detection API request failed");
+      }
+      const data = await response.json();
+      // Automatically split the timeline based on detected dead spaces.
+      const newSegments = splitSegments(data.deadSpaces, videoDuration, formatTime);
+      setSegments(newSegments);
+    } catch (error) {
+      console.error("Error in dead space detection:", error);
+      alert("Dead space detection failed.");
+    } finally {
+      setDeadSpaceProcessing(false);
+    }
+  };
+
+  // --- End Dead Space Detection ---
+
   // Drag handlers for the playhead.
   const handleDragStart = () => {
     setIsDraggingPlayhead(true);
@@ -270,8 +358,27 @@ const Timeline = ({
           isPlaying={isPlaying}
           playbackSpeed={playbackSpeed}
           onSpeedChange={onSpeedChange}
+          onDetectDeadSpace={detectDeadSpace} // NEW: Pass dead space detection callback
         />
-        <div style={{ width: "100%", height: "182px", overflow: "hidden" }}>
+        <div style={{ width: "100%", height: "182px", overflow: "hidden", position: 'relative' }}>
+          {deadSpaceProcessing && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              zIndex: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              color: '#333'
+            }}>
+              Processing dead space...
+            </div>
+          )}
           <div 
             ref={containerRef} 
             style={{ position: 'relative', width: "100%", overflowX: "auto", height: "100%" }}
@@ -300,6 +407,7 @@ const Timeline = ({
                   selectedSegmentId={selectedSegmentId}
                   setSelectedSegmentId={setSelectedSegmentId}
                 />
+
                 <Playhead 
                   position={playbackTime * effectiveScale} 
                   effectiveScale={effectiveScale} 

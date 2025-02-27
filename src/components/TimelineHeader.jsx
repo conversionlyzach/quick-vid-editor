@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
 import RedoRoundedIcon from '@mui/icons-material/RedoRounded';
 import ContentCutRoundedIcon from '@mui/icons-material/ContentCutRounded'; // Scissor icon for split
+import SpatialAudioOffOutlinedIcon from '@mui/icons-material/SpatialAudioOffOutlined'; // Dead space detection icon
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
@@ -23,7 +24,8 @@ const TimelineHeader = ({
   onPlayPause,
   isPlaying,
   playbackSpeed,
-  onSpeedChange
+  onSpeedChange,
+  onDetectDeadSpace // New callback prop for dead space detection
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -52,14 +54,18 @@ const TimelineHeader = ({
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: "var(--timeline-bg)",  // white
-      color: "var(--timeline-header-icon)",    // #090C14
+      backgroundColor: "var(--timeline-bg)",
+      color: "var(--timeline-header-icon)",
       position: 'relative'
     }}>
       <div style={{ display: 'flex', gap: '8px' }}>
         <UndoRoundedIcon style={{ cursor: 'pointer', color: "var(--timeline-header-icon)" }} />
         <RedoRoundedIcon style={{ cursor: 'pointer', color: "var(--timeline-header-icon)" }} />
         <ContentCutRoundedIcon style={{ cursor: 'pointer', color: "var(--timeline-header-icon)" }} onClick={onSplit} />
+        <SpatialAudioOffOutlinedIcon 
+          style={{ cursor: 'pointer', color: "var(--timeline-header-icon)" }} 
+          onClick={onDetectDeadSpace ? onDetectDeadSpace : () => console.log("Dead space detection triggered")} 
+        />
         <ContentCopyOutlinedIcon style={{ cursor: 'pointer', color: "var(--timeline-header-icon)" }} />
         <DeleteOutlineRoundedIcon style={{ cursor: 'pointer', color: "var(--timeline-header-icon)" }} onClick={() => {
           console.log("Delete icon clicked, calling onDeleteSegment(9,15)");
@@ -70,7 +76,7 @@ const TimelineHeader = ({
         <div onClick={onPlayPause} style={{ cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div
             style={{
-              backgroundColor: "var(--timeline-header-icon)", // Circle background: #090C14
+              backgroundColor: "var(--timeline-header-icon)",
               borderRadius: "50%",
               padding: "8px"
             }}
