@@ -27,6 +27,8 @@ def format_time(seconds):
     secs = int(seconds % 60)
     return f"{hrs:02d}:{mins:02d}:{secs:02d}"
 
+# ----- Transcription route -----
+
 @app.route("/api/transcribe", methods=["POST"])
 def transcribe():
     if "file" not in request.files:
@@ -109,6 +111,8 @@ def transcribe():
         os.remove(audio_filepath)
     return jsonify({"transcript": transcript})
 
+# ----- Deadspace detection route -----
+
 @app.route("/api/detect-dead-space", methods=["POST"])
 def detect_dead_space():
     if "file" not in request.files:
@@ -123,10 +127,11 @@ def detect_dead_space():
     file.save(filepath)
     print(f"Saved file for dead space detection: {filepath}")
 
-    # Build FFmpeg command to detect silence
+    # Build FFmpeg command to detect silence in the audio stream only (skip video)
     cmd = [
          "ffmpeg",
          "-i", filepath,
+         "-vn",  # Skip video decoding
          "-af", "silencedetect=n=-30dB:d=0.5",
          "-f", "null",
          "-"
@@ -145,7 +150,6 @@ def detect_dead_space():
     # Parse the stderr output to extract dead space segments.
     dead_spaces = []
     silence_start = None
-    # Look for lines with "silence_start:" and "silence_end:".
     for line in stderr_output.splitlines():
          if "silence_start:" in line:
              match = re.search(r"silence_start:\s*(\d+\.?\d*)", line)
@@ -156,7 +160,7 @@ def detect_dead_space():
              if match:
                   silence_end = float(match.group(1))
                   dead_spaces.append({"start": silence_start, "end": silence_end})
-                  silence_start = None  # Reset for next segment
+                  silence_start = None
 
     # Clean up the uploaded file.
     if os.path.exists(filepath):
@@ -164,6 +168,7 @@ def detect_dead_space():
 
     print("Detected dead space segments:", dead_spaces)
     return jsonify({"deadSpaces": dead_spaces})
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
