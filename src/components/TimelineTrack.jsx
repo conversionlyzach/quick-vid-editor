@@ -6,28 +6,37 @@ const TimelineTrack = ({
   effectiveScale,
   gap = 3,
   onSegmentResize,
-  selectedSegmentId,
-  setSelectedSegmentId
+  selectedSegmentIds,
+  setSelectedSegmentIds
 }) => {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {segments.map((segment) => {
         const leftPos = segment.effectiveStart * effectiveScale;
         const width = (segment.effectiveEnd - segment.effectiveStart) * effectiveScale - gap;
-        const isSelected = segment.id === selectedSegmentId;
+        const isSelected = selectedSegmentIds.includes(segment.id);
         return (
           <div
             key={segment.id}
             onClick={(e) => {
               e.stopPropagation();
-              setSelectedSegmentId(segment.id);
+              // If meta key is pressed, toggle this segment in multi-select; otherwise, set it as the sole selection.
+              if (e.metaKey) {
+                if (selectedSegmentIds.includes(segment.id)) {
+                  setSelectedSegmentIds(selectedSegmentIds.filter(id => id !== segment.id));
+                } else {
+                  setSelectedSegmentIds([...selectedSegmentIds, segment.id]);
+                }
+              } else {
+                setSelectedSegmentIds([segment.id]);
+              }
             }}
             style={{
               position: 'absolute',
               left: leftPos,
-              top: '10px', // Leaves 10px padding at the top
+              top: '10px',
               width: width,
-              height: 'calc(100% - 20px)', // Leaves 10px padding at top and bottom
+              height: 'calc(100% - 20px)',
               backgroundColor: segment.isDeadSpace ? "#FB3B34" : "var(--timeline-segment-bg)",
               borderRadius: '3px',
               border: isSelected ? '3px solid var(--timeline-segment-selected)' : 'none',

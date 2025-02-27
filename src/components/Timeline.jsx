@@ -84,7 +84,6 @@ const splitSegments = (deadSpaces, videoDuration, formatTime) => {
   return segments;
 };
 
-
 const recalcEffectiveSegments = (segs) => {
   let cumulative = 0;
   return segs.map(seg => {
@@ -105,7 +104,7 @@ const recalcEffectiveSegments = (segs) => {
 };
 
 const Timeline = ({
-  videoFile, // NEW: Accept videoFile prop from parent
+  videoFile, // Accept videoFile prop from parent
   videoDuration = 600,
   segments: initialSegmentsProp = [],
   playbackTime = 0,
@@ -146,7 +145,8 @@ const Timeline = ({
   }, [videoDuration]);
   const allowedPresets = generateAllowedPresets(videoDuration);
 
-  // Local state for the currently selected segment (by id).
+  // Local state for multi-select (for dead space selection) and single selection.
+  const [selectedSegmentIds, setSelectedSegmentIds] = useState([]);
   const [selectedSegmentId, setSelectedSegmentId] = useState(null);
 
   // Split functionality.
@@ -168,7 +168,7 @@ const Timeline = ({
       effectiveStart: 0,
       effectiveEnd: 0,
       label: "",
-      isDeadSpace: seg.isDeadSpace  // Preserve dead space flag
+      isDeadSpace: seg.isDeadSpace
     };
     const newSeg2 = {
       id: seg.id + "-2",
@@ -177,7 +177,7 @@ const Timeline = ({
       effectiveStart: 0,
       effectiveEnd: 0,
       label: "",
-      isDeadSpace: seg.isDeadSpace  // Preserve dead space flag
+      isDeadSpace: seg.isDeadSpace
     };
     const newSegments = [
       ...segments.slice(0, segIndex),
@@ -188,32 +188,42 @@ const Timeline = ({
     const recalculated = recalcEffectiveSegments(newSegments);
     setSegments(recalculated);
     setSelectedSegmentId(null);
+    setSelectedSegmentIds([]);
   };
-  
 
   // Deletion functionality.
   const handleLocalDeleteSegment = () => {
-    if (!selectedSegmentId) {
+    let idsToDelete = [];
+    if (selectedSegmentIds.length > 0) {
+      idsToDelete = selectedSegmentIds;
+    } else if (selectedSegmentId) {
+      idsToDelete = [selectedSegmentId];
+    } else {
       alert("No segment selected for deletion.");
       return;
     }
-    const deletedSegment = segments.find(seg => seg.id === selectedSegmentId);
-    if (!deletedSegment) return;
-    const deletedDuration = deletedSegment.effectiveEnd - deletedSegment.effectiveStart;
-    let newPlaybackTime = playbackTime;
-    if (playbackTime >= deletedSegment.effectiveEnd) {
-      newPlaybackTime = playbackTime - deletedDuration;
-    } else if (playbackTime >= deletedSegment.effectiveStart && playbackTime < deletedSegment.effectiveEnd) {
-      newPlaybackTime = deletedSegment.effectiveStart;
+
+    // Show confirmation based on how many segments are selected.
+    if (idsToDelete.length > 1) {
+      if (!window.confirm("Are you sure you want to delete all selected segments?")) {
+        return;
+      }
+    } else {
+      if (!window.confirm("Are you sure you want to delete this segment?")) {
+        return;
+      }
     }
-    const remaining = segments.filter(seg => seg.id !== selectedSegmentId);
+
+    const remaining = segments.filter(seg => !idsToDelete.includes(seg.id));
     const newSegments = recalcEffectiveSegments(remaining);
     setSegments(newSegments);
+    setSelectedSegmentIds([]);
     setSelectedSegmentId(null);
     if (onSeek) {
-      onSeek(newPlaybackTime);
+      onSeek(remaining.length > 0 ? remaining[0].effectiveStart : 0);
     }
   };
+
 
   // Compute effective video duration from the segments.
   let effectiveVideoDuration = segments.length > 0 ? segments[segments.length - 1].effectiveEnd : 0;
@@ -267,7 +277,17 @@ const Timeline = ({
   // --- NEW: Dead Space Detection ---
   const [deadSpaceProcessing, setDeadSpaceProcessing] = useState(false);
 
-  const detectDeadSpace = async () => {
+  const detectDeadSpace = async (e) => {
+    if (e && (e.metaKey || e.ctrlKey)) {
+      // Toggle selection of all dead space segments...
+      const allDeadIds = segments.filter(s => s.isDeadSpace).map(s => s.id);
+      if (selectedSegmentIds.length === allDeadIds.length) {
+        setSelectedSegmentIds([]);
+      } else {
+        setSelectedSegmentIds(allDeadIds);
+      }
+      return;
+    }    
     if (!videoFile) {
       alert("No video file available for dead space detection.");
       return;
@@ -294,7 +314,6 @@ const Timeline = ({
       setDeadSpaceProcessing(false);
     }
   };
-
   // --- End Dead Space Detection ---
 
   // Drag handlers for the playhead.
@@ -346,19 +365,13 @@ const Timeline = ({
           onSplit={handleSplit}
           onDeleteSegment={() => {
             console.log("TimelineHeader delete icon clicked, calling parent's onDeleteSegment");
-            if (selectedSegmentId) {
-              const deletedSegment = segments.find(seg => seg.id === selectedSegmentId);
-              if (deletedSegment && onDeleteSegment) {
-                onDeleteSegment(deletedSegment.effectiveStart, deletedSegment.effectiveEnd);
-              }
-            }
             handleLocalDeleteSegment();
           }}
           onPlayPause={onPlayPause}
           isPlaying={isPlaying}
           playbackSpeed={playbackSpeed}
           onSpeedChange={onSpeedChange}
-          onDetectDeadSpace={detectDeadSpace} // NEW: Pass dead space detection callback
+          onDetectDeadSpace={detectDeadSpace} // Pass dead space detection callback
         />
         <div style={{ width: "100%", height: "182px", overflow: "hidden", position: 'relative' }}>
           {deadSpaceProcessing && (
@@ -406,8 +419,9 @@ const Timeline = ({
                   onSegmentResize={() => {}}
                   selectedSegmentId={selectedSegmentId}
                   setSelectedSegmentId={setSelectedSegmentId}
+                  selectedSegmentIds={selectedSegmentIds}
+                  setSelectedSegmentIds={setSelectedSegmentIds}
                 />
-
                 <Playhead 
                   position={playbackTime * effectiveScale} 
                   effectiveScale={effectiveScale} 
